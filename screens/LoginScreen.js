@@ -9,17 +9,19 @@ import {
 	TouchableOpacity,
 	View,
 } from "react-native";
+import { useTailwind } from "tailwind-rn";
 import { useAuth } from "../hooks/useAuth";
 
 const LoginScreen = () => {
 	const { googleSignIn, loading } = useAuth();
 	const navigation = useNavigation();
+	const tailwind = useTailwind();
 
-	useLayoutEffect(() => {
-		navigation.setOptions({
-			headerShown: false,
-		});
-	}, []);
+	// useLayoutEffect(() => {
+	// 	navigation.setOptions({
+	// 		headerShown: false,
+	// 	});
+	// }, []);
 
 	const handleGoogleSignIn = async () => {
 		try {
@@ -30,14 +32,23 @@ const LoginScreen = () => {
 	};
 
 	return (
-		<View style={styles.container}>
+		<View style={tailwind("flex-1")}>
 			<ImageBackground
 				resizeMode="cover"
-				style={styles.container}
+				style={tailwind("flex-1")}
 				source={{ uri: "https://tinder.com/static/tinder.png" }}
 			>
-				<TouchableOpacity style={styles.touch} className="items-center">
-					<Text style={styles.text}> Sign in & get swiping </Text>
+				<TouchableOpacity
+					style={[
+						tailwind("absolute bottom-40 w-52 bg-white p-4 rounded-2xl"),
+						{ marginHorizontal: "25%" },
+					]}
+					onPress={handleGoogleSignIn}
+				>
+					<Text style={tailwind("font-semibold text-center")}>
+						{" "}
+						Sign in & get swiping{" "}
+					</Text>
 				</TouchableOpacity>
 			</ImageBackground>
 		</View>
