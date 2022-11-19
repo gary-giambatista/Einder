@@ -4,6 +4,7 @@ import React, { useLayoutEffect } from "react";
 import {
 	Button,
 	ImageBackground,
+	StyleSheet,
 	Text,
 	TouchableOpacity,
 	View,
@@ -29,18 +30,37 @@ const LoginScreen = () => {
 	};
 
 	return (
-		<View>
+		<View style={styles.container}>
 			<ImageBackground
 				resizeMode="cover"
+				style={styles.container}
 				source={{ uri: "https://tinder.com/static/tinder.png" }}
 			>
-				<Button title="Login" onPress={handleGoogleSignIn} />
-				<TouchableOpacity>
-					<Text>Sign in & get swipping</Text>
+				<TouchableOpacity style={styles.touch} className="items-center">
+					<Text style={styles.text}> Sign in & get swiping </Text>
 				</TouchableOpacity>
 			</ImageBackground>
 		</View>
 	);
 };
+
+const styles = StyleSheet.create({
+	container: {
+		display: "flex",
+		flex: 1,
+	},
+	text: {
+		color: "black",
+		fontWeight: "semi-bold",
+		fontSize: 20,
+	},
+	touch: {
+		position: "absolute",
+		bottom: 170,
+		backgroundColor: "white",
+		padding: 10,
+		borderRadius: 6,
+	},
+});
 
 export default LoginScreen;
