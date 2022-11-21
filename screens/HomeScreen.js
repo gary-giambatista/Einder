@@ -1,6 +1,20 @@
 import { AntDesign, Entypo, Ionicons } from "@expo/vector-icons";
+import { isReactNative } from "@firebase/util";
 import { useNavigation } from "@react-navigation/native";
-import React, { useRef, useState } from "react";
+import {
+	collection,
+	deleteDoc,
+	doc,
+	DocumentSnapshot,
+	getDoc,
+	getDocs,
+	onSnapshot,
+	query,
+	serverTimestamp,
+	setDoc,
+	where,
+} from "firebase/firestore";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
 	Button,
 	Image,
@@ -12,7 +26,9 @@ import {
 } from "react-native";
 import Swiper from "react-native-deck-swiper";
 import { useTailwind } from "tailwind-rn";
+import { db } from "../firebaseConfig";
 import { useAuth } from "../hooks/useAuth";
+import generateId from "../lib/GenerateId";
 
 const DUMMY_DATA = [
 	{
@@ -45,13 +61,122 @@ const DUMMY_DATA = [
 ];
 
 const HomeScreen = () => {
+	//hooks
 	const navigation = useNavigation();
 	const { user, logOut } = useAuth();
 	const tailwind = useTailwind();
 	const swipeRef = useRef(null);
 
+	//state
 	const [profiles, setProfiles] = useState([]);
 
+	//force open modal if no info is entered (user needs to have info in their profile to swipe)
+	useLayoutEffect(() => {
+		const unsub = onSnapshot(doc(db, "users", user.uid), (snapshot) => {
+			if (!snapshot.exists()) {
+				navigation.navigate("Modal");
+			}
+		});
+		return unsub();
+	}, []);
+
+	//fetch users cards correctly (filter passed/swiped/own user profile)
+	useEffect(() => {
+		let unsub;
+
+		const fetchCards = async () => {
+			//get passes to use in filtering cards (so you don't see cards already passed on)
+			const passes = await getDocs(
+				collection(db, "users", user.uid, "passes")
+			).then((snapshot) => snapshot.docs.map((doc) => doc.id));
+			//get swipes to use in filtering cards (so you don't see cards already swiped yes on)
+			const swipes = await getDocs(
+				collection(db, "users", user.uid, "swipes")
+			).then((snapshot) => snapshot.docs.map((doc) => doc.id));
+
+			//store the arrays if there is one
+			const passedUserIds = passes.length > 0 ? passes : ["test"];
+			const swipedUserIds = swipes.length > 0 ? swipes : ["test"];
+
+			unsub = onSnapshot(
+				//use query fireBase method to only filter and map out cards you want. Query removes passed & swiped on cards, while filter removes the current users own profile.
+				query(
+					collection(db, "users"),
+					where("id", "not-in", [...passedUserIds, ...swipedUserIds])
+				),
+				(snapshot) => {
+					setProfiles(
+						snapshot.docs
+							.filter((doc) => doc.id !== user.uid)
+							.map((doc) => ({
+								id: doc.id,
+								...doc.data(),
+							}))
+					);
+				}
+			);
+		};
+		fetchCards();
+		return unsub;
+	}, [db]);
+
+	//create swipped left(rejected db collection) by passing cardIndex which is attached to each user's ID
+	const swipeLeftRecord = (cardIndex) => {
+		if (!profiles[cardIndex]) return;
+
+		// get all relevant user data
+		const userSwiped = profiles[cardIndex];
+		console.log(`You swiped PASS on ${userSwiped.displayName}`);
+
+		setDoc(doc(db, "users", user.uid, "passes", userSwiped.id), userSwiped);
+	};
+	//create swiped on db record by passing cardIndex which is attached to each user's ID, also handle MATCHING
+	const swipeRightRecord = async (cardIndex) => {
+		if (!profiles[cardIndex]) return;
+
+		// get all relevant user data
+		const userSwiped = profiles[cardIndex];
+		const loggedInProfile = await (await getDocs(db, "users", user.uid)).data();
+
+		//check if the user swipped on you
+		getDoc(doc(db, "users", userSwiped.id, "swipes", user.uid)).then(
+			(documentSnapshot) => {
+				if (documentSnapshot.exists()) {
+					//user has swiped with you before you matched
+					//create a match!
+					console.log(`Horray, you matched with ${userSwiped.displayName}`);
+					//record the swip
+					setDoc(
+						doc(db, "users", user.uid, "swipes", userSwiped.id),
+						userSwiped
+					);
+					//create the MATCH here (create a separate collection in db & match the 2 user Ids)
+					//create a function that always makes 1 user ID go before the other (lib/generateId.js)
+					setDoc(doc(db, "matches", generateId(user.uid, userSwiped.id)), {
+						users: {
+							[user.uid]: loggedInProfile,
+							[userSwiped.id]: userSwiped, //used to check who each user is (tell which user is which)
+						},
+						usersMatched: [user.uid, userSwiped.id], //used for string comparison check later on
+						timestamp: serverTimestamp(),
+					});
+
+					navigation.navigate("Match", {
+						//useRoute params from react-navigation/native (passes props to the route)
+						loggedInProfile,
+						userSwiped,
+					});
+				} else {
+					//user has swiped Yes as the first interaction between the two or didn't get swiped on
+				}
+			}
+		);
+
+		console.log(`You swiped on ${userSwiped.displayName} (${userSwiped.job})`);
+		setDoc(doc(db, "users", user.uid, "swipes", userSwiped.id), userSwiped);
+	};
+
+	//Main Component rendering
 	return (
 		<SafeAreaView style={tailwind("flex-1")}>
 			{/* Header */}
@@ -95,10 +220,12 @@ const HomeScreen = () => {
 					backgroundColor={"4FD0E9"}
 					animateCardOpacity
 					verticalSwipe={false}
-					onSwipedLeft={() => {
+					onSwipedLeft={(cardIndex) => {
+						swipeLeftRecord(cardIndex);
 						console.log("Swipe Pass");
 					}}
-					onSwipedRight={() => {
+					onSwipedRight={(cardIndex) => {
+						swipeRightRecord(cardIndex);
 						console.log("Swipe Match");
 					}}
 					overlayLabels={{
@@ -159,9 +286,9 @@ const HomeScreen = () => {
 									styles.cardShadow,
 								]}
 							>
-								<Text style={tailwind("font-bold pb-5")}>No more profiles</Text>
+								<Text style={tailwind("font-bold pb-3")}>No more profiles</Text>
 								<Image
-									style={tailwind("h-20 w-full")}
+									style={tailwind("h-52 w-full")}
 									height={100}
 									width={100}
 									source={{
@@ -191,13 +318,6 @@ const HomeScreen = () => {
 					<AntDesign name="heart" size={24} color="green" />
 				</TouchableOpacity>
 			</View>
-
-			{/* <Text>I am the home screen.</Text>
-			<Button
-				title="Go to Chat screen."
-				onPress={() => navigation.navigate("Chat")}
-			/>
-			<Button title="Logout" onPress={logOut} /> */}
 		</SafeAreaView>
 	);
 };
