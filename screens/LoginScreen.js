@@ -17,12 +17,6 @@ const LoginScreen = () => {
 	const navigation = useNavigation();
 	const tailwind = useTailwind();
 
-	// useLayoutEffect(() => {
-	// 	navigation.setOptions({
-	// 		headerShown: false,
-	// 	});
-	// }, []);
-
 	const handleGoogleSignIn = async () => {
 		try {
 			await googleSignIn();

@@ -1,6 +1,6 @@
 import { AntDesign, Entypo, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import {
 	Button,
 	Image,
@@ -50,6 +50,8 @@ const HomeScreen = () => {
 	const tailwind = useTailwind();
 	const swipeRef = useRef(null);
 
+	const [profiles, setProfiles] = useState([]);
+
 	return (
 		<SafeAreaView style={tailwind("flex-1")}>
 			{/* Header */}
@@ -64,14 +66,20 @@ const HomeScreen = () => {
 						source={user.photoURL}
 					/>
 				</TouchableOpacity>
-				<TouchableOpacity style={tailwind("")}>
+				<TouchableOpacity
+					onPress={() => navigation.navigate("Modal")}
+					style={tailwind("")}
+				>
 					<Image
 						style={tailwind("h-[56px] w-[47px]")}
 						source={require("../TinderLogo.png")}
 					/>
 				</TouchableOpacity>
 
-				<TouchableOpacity style={tailwind("")}>
+				<TouchableOpacity
+					onPress={() => navigation.navigate("Chat")}
+					style={tailwind("")}
+				>
 					<Ionicons name="chatbubbles-sharp" size={30} color="#FF5864" />
 				</TouchableOpacity>
 			</View>
@@ -112,36 +120,57 @@ const HomeScreen = () => {
 							},
 						},
 					}}
-					renderCard={(card) => (
-						<View
-							id={card.id}
-							style={tailwind("relative h-3/4 bg-white rounded-xl")}
-						>
-							<Image
-								style={tailwind("absolute top-0 h-full w-full rounded-xl")}
-								source={card.photoURL}
-							/>
+					renderCard={(card) =>
+						card ? (
+							<View
+								id={card.id}
+								style={tailwind("relative h-3/4 bg-white rounded-xl")}
+							>
+								<Image
+									style={tailwind("absolute top-0 h-full w-full rounded-xl")}
+									source={card.photoURL}
+								/>
+								<View
+									style={[
+										tailwind(
+											"absolute bottom-0 h-full bg-white w-full flex-row justify-between items-center h-20 px-6 py-2 rounded-b-xl"
+										),
+										styles.cardShadow,
+									]}
+								>
+									<View>
+										<Text style={tailwind("text-xl font-bold")}>
+											{card.firstName} {card.lastName}
+										</Text>
+										<Text> {card.job} </Text>
+									</View>
+									<Text style={tailwind("text-2xl font-bold ")}>
+										{" "}
+										{card.age}{" "}
+									</Text>
+								</View>
+							</View>
+						) : (
 							<View
 								style={[
 									tailwind(
-										"absolute bottom-0 h-full bg-white w-full flex-row justify-between items-center h-20 px-6 py-2 rounded-b-xl"
+										"relative bg-white h-3/4 rounded-xl justify-center items-center"
 									),
 									styles.cardShadow,
 								]}
 							>
-								<View>
-									<Text style={tailwind("text-xl font-bold")}>
-										{card.firstName} {card.lastName}
-									</Text>
-									<Text> {card.job} </Text>
-								</View>
-								<Text style={tailwind("text-2xl font-bold ")}>
-									{" "}
-									{card.age}{" "}
-								</Text>
+								<Text style={tailwind("font-bold pb-5")}>No more profiles</Text>
+								<Image
+									style={tailwind("h-20 w-full")}
+									height={100}
+									width={100}
+									source={{
+										uri: "https://t3.ftcdn.net/jpg/03/23/92/38/360_F_323923845_sB6dVDxEFFJOqJB6Rn6kCyf3tBe1RRaA.jpg",
+									}}
+								/>
 							</View>
-						</View>
-					)}
+						)
+					}
 				/>
 			</View>
 			<View style={tailwind("flex flex-row justify-evenly")}>
